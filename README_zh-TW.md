@@ -48,6 +48,22 @@ except OSError:
     pass
 ```
 
+## TOP 版：行程與設定
+
+搭配 [TOP](https://github.com/tto1979/openpilot)（main-0.11.1 起）可以在手機上看行程、下載影片、直接改設定：
+
+1. TOP 設定頁打開「啟用 opview」，停車時也能用
+2. App 右上角「行程與設定」（未連線時一直顯示，行駛中點一下畫面就會出現）
+3. 第一次會要求配對碼：「啟用 opview」說明最後一行的 6 位數字（C4：opview pairing code 卡片）
+
+- **行程**：播放預覽影片（整趟連續播），每段可下載預覽影片、原始畫質影片、紀錄檔，存到手機的「下載/opview」。行駛中不能下載。
+- **設定**：TOP 設定頁全部、車型、openpilot 常用開關、駕駛風格、速限設定。名稱與說明依手機語言翻譯；行駛中不能改的項目會註明原因。
+- 找不到裝置時可以直接輸入 IP，即時畫面也會用這個 IP。
+- dragonpilot 的 dashy（port 5088）也能用，但沒有配對與整趟播放。
+- 需要 Android 7.0 以上。
+
+API 規格：TOP 的 `top/system/opview_api/README.md`。
+
 ## 架構
 
 ```

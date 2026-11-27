@@ -89,7 +89,8 @@ class _DevicePageState extends State<DevicePage> {
   /// ask for the code until it works or the user gives up
   Future<bool> _pair(DeviceApi api) async {
     String? error;
-    while (mounted) {
+    while (true) {
+      if (!mounted) return false;
       final code = await showPairingDialog(context, error: error);
       if (code == null || code.isEmpty) return false;
       api.token = code;
@@ -99,7 +100,6 @@ class _DevicePageState extends State<DevicePage> {
       }
       error = T.pairingWrong;
     }
-    return false;
   }
 
   /// the device's code changed (or was reset): forget ours and pair again
