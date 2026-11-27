@@ -19,6 +19,9 @@ if not os.path.exists(SRC):
 
 src = Image.open(SRC).convert("RGBA")
 
+# icon background (adaptive icon, iOS): the TOP logo has black outlines
+BG = (255, 255, 255)
+
 # Android mipmap icons
 android_sizes = {
     "mipmap-mdpi": 48,
@@ -61,7 +64,7 @@ os.makedirs(values_path, exist_ok=True)
 with open(os.path.join(values_path, "colors.xml"), "w") as f:
     f.write('<?xml version="1.0" encoding="utf-8"?>\n')
     f.write('<resources>\n')
-    f.write('    <color name="ic_launcher_background">#000000</color>\n')
+    f.write('    <color name="ic_launcher_background">#%02X%02X%02X</color>\n' % BG)
     f.write('</resources>\n')
 
 print("Android icons generated")
@@ -89,12 +92,10 @@ ios_icons = [
 ]
 
 for filename, size in ios_icons:
+    # iOS shows transparency as black and the App Store refuses alpha: flatten on the background
     resized = src.resize((size, size), Image.LANCZOS)
-    if size == 1024:
-        bg = Image.new("RGB", (size, size), (0, 0, 0))
-        bg.paste(resized, mask=resized.split()[3])
-        bg.save(os.path.join(ios_path, filename))
-    else:
-        resized.save(os.path.join(ios_path, filename))
+    bg = Image.new("RGB", (size, size), BG)
+    bg.paste(resized, mask=resized.split()[3])
+    bg.save(os.path.join(ios_path, filename))
 
 print("iOS icons generated")

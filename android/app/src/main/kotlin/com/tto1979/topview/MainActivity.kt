@@ -1,4 +1,4 @@
-package org.dragonpilot.opview
+package com.tto1979.topview
 
 import android.app.DownloadManager
 import android.content.Context
@@ -12,8 +12,8 @@ import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
 class MainActivity: FlutterActivity() {
-    private val CHANNEL = "org.dragonpilot.opview/wake_lock"
-    private val DOWNLOAD_CHANNEL = "org.dragonpilot.opview/download"
+    private val CHANNEL = "com.tto1979.topview/wake_lock"
+    private val DOWNLOAD_CHANNEL = "com.tto1979.topview/download"
 
     /** queues the download, returns the folder it goes to */
     private fun enqueueDownload(url: String, name: String): String {
@@ -21,8 +21,8 @@ class MainActivity: FlutterActivity() {
             .setTitle(name)
             .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
         val folder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, "opview/$name")
-            "${Environment.DIRECTORY_DOWNLOADS}/opview"
+            request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, "topview/$name")
+            "${Environment.DIRECTORY_DOWNLOADS}/topview"
         } else {
             // the public Downloads folder needs a storage permission before Android 10: use the app's own
             request.setDestinationInExternalFilesDir(this, Environment.DIRECTORY_DOWNLOADS, name)

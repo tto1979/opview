@@ -3,7 +3,7 @@
 
 import 'package:flutter/services.dart';
 
-const _channel = MethodChannel('org.dragonpilot.opview/wake_lock');
+const _channel = MethodChannel('com.tto1979.topview/wake_lock');
 
 Future<void> setKeepScreenOn(bool enabled) async {
   try {

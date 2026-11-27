@@ -2,7 +2,7 @@
 
 import 'package:flutter/services.dart';
 
-const _channel = MethodChannel('org.dragonpilot.opview/download');
+const _channel = MethodChannel('com.tto1979.topview/download');
 
 class DownloadException implements Exception {
   final String message;

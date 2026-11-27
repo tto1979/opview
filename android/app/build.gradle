@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace = "org.dragonpilot.opview"
+    namespace = "com.tto1979.topview"
     // match dashy: explicit SDK versions for old headunit compat
     compileSdk = 36
     ndkVersion = flutter.ndkVersion
@@ -16,7 +16,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "org.dragonpilot.opview"
+        applicationId = "com.tto1979.topview"
         // Android 7.0: flutter itself needs 6.0+ now and the plugins (video_player, ...) 7.0+
         minSdk = 24
         targetSdk = 34
