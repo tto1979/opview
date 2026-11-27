@@ -43,6 +43,15 @@ class ConnectionManager {
 
   dynamic get videoRenderer => _transport.videoRenderer;
 
+  /// the device's address for the drives & settings pages, also while the live view isn't connected
+  String? get knownHost => _host ?? _knownHost;
+
+  /// address typed in on the drives & settings pages: also used by the live view from now on
+  void setManualHost(String host) {
+    _knownHost = host;
+    _saveCachedHost(host);
+  }
+
   ConnectionManager(
     this._uiState, {
     Discovery? discovery,
@@ -53,6 +62,7 @@ class ConnectionManager {
         _adapter = adapter ?? CerealAdapter();
 
   String? _host;
+  String? _knownHost; // last host seen (cached, found or typed in), for the drives & settings pages
   StreamSubscription? _deviceSub;
   StreamSubscription? _dataSub;
   StreamSubscription? _stateSub;
@@ -89,6 +99,7 @@ class ConnectionManager {
     if (cachedHost != null && await _isOnSameSubnet(cachedHost)) {
       _setStatus('trying cached host $cachedHost');
       _host = cachedHost;
+      _knownHost = cachedHost;
       _startDiscovery(); // mDNS in parallel as fallback
       _connect();
     } else {
@@ -133,6 +144,7 @@ class ConnectionManager {
 
   /// first device found → connect (or update host if cached attempt is still in-flight)
   void _onDeviceFound(DiscoveredDevice device) {
+    _knownHost = device.host;
     if (_uiState.isConnected) return; // already connected via cached host
     _host = device.host;
     _setStatus('found ${device.displayName} at ${device.host}');
