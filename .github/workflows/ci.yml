@@ -43,6 +43,18 @@ jobs:
 
       - run: flutter build apk --release
 
+      # package info, signatures and alignment of what gets installed
+      - name: Check APK
+        run: |
+          ls -la build/app/outputs/flutter-apk/
+          apk=build/app/outputs/flutter-apk/app-release.apk
+          bt=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          echo "build-tools: $bt"
+          "$bt"/aapt2 dump badging "$apk" | grep -E "^(package|sdkVersion|targetSdkVersion|application:|launchable-activity|native-code)"
+          "$bt"/apksigner verify --verbose --print-certs "$apk"
+          "$bt"/zipalign -c -P 16 4 "$apk" && echo "zipalign: ok"
+          unzip -l "$apk" | grep -E "AndroidManifest|classes|lib/|mipmap-anydpi" | head -20
+
       - uses: actions/upload-artifact@v7
         with:
           name: topview-apk
