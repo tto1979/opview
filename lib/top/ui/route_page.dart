@@ -1,7 +1,6 @@
 // one drive: the preview video (qcamera, HLS) and its segments, with downloads
 // TOP plays the whole drive as one playlist; dashy plays one segment at a time
 
-import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 import 'package:opview/services/wake_lock_service.dart' as wake_lock;
@@ -25,7 +24,6 @@ class RoutePage extends StatefulWidget {
 class _RoutePageState extends State<RoutePage> {
   VideoPlayerController? _controller;
   String? _playerError;
-  bool _supported = true;
   Segment? _single; // dashy: the segment being played
 
   late final List<Segment> _playable = widget.route.segments.where((s) => s.playable).toList();
@@ -44,15 +42,7 @@ class _RoutePageState extends State<RoutePage> {
     super.dispose();
   }
 
-  Future<void> _start() async {
-    // the player needs Android 7+ (the app itself still runs on 5+ for old head units)
-    if (Platform.isAndroid) {
-      final sdk = await androidSdk();
-      if (sdk > 0 && sdk < 24) {
-        if (mounted) setState(() => _supported = false);
-        return;
-      }
-    }
+  void _start() {
     if (_playable.isEmpty) return;
     if (widget.api.hasRouteApi) {
       _open(widget.api.routeManifest(widget.route.route));
@@ -114,7 +104,7 @@ class _RoutePageState extends State<RoutePage> {
   }
 
   void _play(Segment s) {
-    if (!s.playable || !_supported) return;
+    if (!s.playable) return;
     if (!widget.api.hasRouteApi) {
       _openSegment(s);
       return;
@@ -208,9 +198,7 @@ class _RoutePageState extends State<RoutePage> {
   Widget _player() {
     final c = _controller;
     Widget body;
-    if (!_supported) {
-      body = _message(T.playerUnsupported);
-    } else if (_playable.isEmpty) {
+    if (_playable.isEmpty) {
       body = _message(T.notPlayable);
     } else if (_playerError != null) {
       body = _message(T.loadFailed(_playerError!));

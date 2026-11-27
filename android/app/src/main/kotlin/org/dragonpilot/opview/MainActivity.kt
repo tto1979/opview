@@ -55,7 +55,6 @@ class MainActivity: FlutterActivity() {
                         }
                     }
                 }
-                "sdkInt" -> result.success(Build.VERSION.SDK_INT)
                 else -> result.notImplemented()
             }
         }

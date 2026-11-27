@@ -21,12 +21,3 @@ Future<String> download(Uri url, String fileName) async {
     throw DownloadException(e.message ?? e.code);
   }
 }
-
-/// Android API level, 0 elsewhere
-Future<int> androidSdk() async {
-  try {
-    return await _channel.invokeMethod<int>('sdkInt') ?? 0;
-  } catch (_) {
-    return 0;
-  }
-}

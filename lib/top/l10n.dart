@@ -40,9 +40,6 @@ class T {
   static String get download => _t('下載', 'Download');
   static String get onroadNoDownload => _t('行駛中無法下載', 'Not available while driving');
   static String get notPlayable => _t('沒有可播放的影片', 'No playable video');
-  static String get playerUnsupported => _t(
-      '這支手機的 Android 版本太舊，無法在 App 內播放，請下載後用其他播放器開啟。',
-      'This Android version is too old to play in the app. Download the video and open it in another player.');
 
   static String segments(int n) => _t('$n 段', '$n segments');
   static String minutes(int n) => _t('$n 分鐘', '$n min');
