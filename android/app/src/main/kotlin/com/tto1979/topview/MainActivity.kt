@@ -2,6 +2,7 @@ package com.tto1979.topview
 
 import android.app.DownloadManager
 import android.content.Context
+import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -15,8 +16,11 @@ class MainActivity: FlutterActivity() {
     private val CHANNEL = "com.tto1979.topview/wake_lock"
     private val DOWNLOAD_CHANNEL = "com.tto1979.topview/download"
 
-    /** queues the download, returns the folder it goes to */
-    private fun enqueueDownload(url: String, name: String): String {
+    private val downloads: DownloadManager
+        get() = getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+
+    /** queues the download: its id, and the folder it goes to */
+    private fun enqueueDownload(url: String, name: String): Map<String, Any> {
         val request = DownloadManager.Request(Uri.parse(url))
             .setTitle(name)
             .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
@@ -28,9 +32,21 @@ class MainActivity: FlutterActivity() {
             request.setDestinationInExternalFilesDir(this, Environment.DIRECTORY_DOWNLOADS, name)
             "Android/data/$packageName/files/${Environment.DIRECTORY_DOWNLOADS}"
         }
-        (getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager).enqueue(request)
-        return folder
+        return mapOf("id" to downloads.enqueue(request), "folder" to folder)
     }
+
+    /** a download's DownloadManager status and reason (HTTP status or ERROR_*), null once it's removed */
+    private fun downloadStatus(id: Long): Map<String, Any>? =
+        downloads.query(DownloadManager.Query().setFilterById(id)).use { c ->
+            if (!c.moveToFirst()) {
+                null
+            } else {
+                mapOf(
+                    "status" to c.getInt(c.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS)),
+                    "reason" to c.getInt(c.getColumnIndexOrThrow(DownloadManager.COLUMN_REASON)),
+                )
+            }
+        }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -42,6 +58,18 @@ class MainActivity: FlutterActivity() {
         // TOP: drive downloads through the system download manager (notification, resumes, Downloads folder)
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, DOWNLOAD_CHANNEL).setMethodCallHandler { call, result ->
             when (call.method) {
+                "status" -> {
+                    val id = call.argument<Number>("id")?.toLong()
+                    result.success(if (id == null) null else downloadStatus(id))
+                }
+                "openDownloads" -> {
+                    try {
+                        startActivity(Intent(DownloadManager.ACTION_VIEW_DOWNLOADS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                        result.success(null)
+                    } catch (e: Exception) {
+                        result.error("open", e.message, null)
+                    }
+                }
                 "download" -> {
                     val url = call.argument<String>("url")
                     val name = call.argument<String>("name")

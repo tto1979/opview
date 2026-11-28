@@ -136,13 +136,59 @@ class _RoutePageState extends State<RoutePage> {
     return false;
   }
 
-  /// queues one file with the system download manager, returns where it goes ('' if it failed)
-  Future<String> _queue(Segment s, String name) async {
+  /// queues one file with the system download manager, null if it couldn't
+  Future<QueuedDownload?> _queue(Segment s, String name) async {
     try {
       return await download(widget.api.downloadUrl('${s.name}/$name'), '${s.name}_$name');
     } on DownloadException catch (e) {
       _snack(T.downloadFailed(e.message));
-      return '';
+      return null;
+    }
+  }
+
+  void _snackWithDownloads(String text) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(text),
+      duration: const Duration(seconds: 6),
+      action: SnackBarAction(label: T.viewDownloads, onPressed: openDownloads),
+    ));
+  }
+
+  /// starts the downloads and says how they ended: where the files are, or why they failed
+  Future<void> _start(List<(Segment, String)> files) async {
+    final queued = <QueuedDownload>[];
+    for (final (s, name) in files) {
+      final q = await _queue(s, name);
+      if (q == null) break;
+      queued.add(q);
+    }
+    if (queued.isEmpty) return;
+    _snackWithDownloads(T.downloading(queued.length == 1 ? queued.first.path : queued.first.folder));
+
+    final pending = {for (final q in queued) q.id};
+    final failed = <int>[];
+    var done = 0;
+    final end = DateTime.now().add(const Duration(minutes: 30));
+    while (pending.isNotEmpty && mounted && DateTime.now().isBefore(end)) {
+      await Future.delayed(const Duration(seconds: 2));
+      for (final id in pending.toList()) {
+        final status = await downloadStatus(id);
+        if (!status.ended) continue;
+        pending.remove(id);
+        if (status.state == DownloadState.done) {
+          done++;
+        } else if (status.state == DownloadState.failed) {
+          failed.add(status.reason);
+        }
+      }
+    }
+    if (failed.isNotEmpty) {
+      _snackWithDownloads(queued.length == 1
+          ? T.downloadFailed(T.downloadReason(failed.first))
+          : T.downloadsFailed(failed.length, queued.length, T.downloadReason(failed.first)));
+    } else if (done == queued.length) {
+      _snackWithDownloads(queued.length == 1 ? T.downloaded(queued.first.path) : T.downloadedMany(done, queued.first.folder));
     }
   }
 
@@ -159,8 +205,7 @@ class _RoutePageState extends State<RoutePage> {
       _snack(T.noRlog);
       return;
     }
-    final where = await _queue(s, name);
-    if (where.isNotEmpty) _snack(T.downloading(where));
+    await _start([(s, name)]);
   }
 
   /// every segment's rlog, after showing how many files and how big
@@ -194,15 +239,7 @@ class _RoutePageState extends State<RoutePage> {
       ),
     );
     if (ok != true) return;
-    var queued = 0;
-    var where = '';
-    for (final (s, name, _) in picked) {
-      final w = await _queue(s, name);
-      if (w.isEmpty) break;
-      where = w;
-      queued++;
-    }
-    if (queued > 0) _snack(T.downloadingMany(queued, where));
+    await _start([for (final (s, name, _) in picked) (s, name)]);
   }
 
   Future<void> _downloadSheet(Segment s) async {
@@ -235,8 +272,7 @@ class _RoutePageState extends State<RoutePage> {
       ),
     );
     if (picked == null) return;
-    final where = await _queue(s, picked);
-    if (where.isNotEmpty) _snack(T.downloading(where));
+    await _start([(s, picked)]);
   }
 
   static int _compareFiles(String a, String b) {
@@ -256,6 +292,7 @@ class _RoutePageState extends State<RoutePage> {
         toolbarHeight: 48,
         title: Text(r.start.isEmpty ? r.route : r.start),
         actions: [
+          IconButton(icon: const Icon(Icons.folder_open), tooltip: T.viewDownloads, onPressed: openDownloads),
           TextButton.icon(onPressed: _downloadAllRlogs, icon: const Icon(Icons.download), label: Text(T.allRlogs)),
           const SizedBox(width: 8),
         ],

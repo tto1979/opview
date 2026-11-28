@@ -3,6 +3,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:opview/top/api/device_api.dart';
+import 'package:opview/top/l10n.dart';
+import 'package:opview/top/services/downloader.dart';
 
 const _json = {'content-type': 'application/json; charset=utf-8'};
 
@@ -194,6 +196,18 @@ void main() {
     expect(classifyError('SocketException: No route to host (OS Error: No route to host, errno = 113)'), Probe.unreachable);
     expect(classifyError('Connection timed out'), Probe.unreachable);
     expect(classifyError('Failed host lookup'), Probe.other);
+  });
+
+  test('download states and reasons', () {
+    expect(downloadStateOf(8), DownloadState.done);
+    expect(downloadStateOf(16), DownloadState.failed);
+    expect(const DownloadStatus(DownloadState.running).ended, isFalse);
+    expect(const DownloadStatus(DownloadState.gone).ended, isTrue);
+    T.zh = false;
+    expect(T.downloadReason(409), 'not available while driving');
+    expect(T.downloadReason(1006), 'not enough space on the phone');
+    expect(T.downloadReason(1234), 'code 1234');
+    expect(const QueuedDownload(1, 'Download/topview', 'a--1_rlog.zst').path, 'Download/topview/a--1_rlog.zst');
   });
 
   test('rlogOf', () {

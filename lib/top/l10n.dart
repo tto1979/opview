@@ -69,12 +69,28 @@ class T {
   static String get allRlogsTitle => _t('下載整趟行程的 rlog', 'Download the drive\'s rlogs');
   static String get noRlog => _t('沒有 rlog', 'No rlog');
   static String rlogFiles(int n, String size) => _t('$n 個檔案${size.isEmpty ? '' : '，共 $size'}', '$n files${size.isEmpty ? '' : ', $size'}');
-  static String downloadingMany(int n, String where) => _t('開始下載 $n 個檔案，存到 $where', 'Downloading $n files to $where');
 
   static String segments(int n) => _t('$n 段', '$n segments');
   static String minutes(int n) => _t('$n 分鐘', '$n min');
   static String segment(int i) => _t('第 ${i + 1} 段', 'Segment ${i + 1}');
   static String downloading(String where) => _t('開始下載，存到 $where', 'Downloading to $where');
+  static String downloaded(String path) => _t('已下載：$path', 'Downloaded: $path');
+  static String downloadedMany(int n, String folder) => _t('$n 個檔案已下載到 $folder', '$n files downloaded to $folder');
+  static String downloadsFailed(int failed, int all, String reason) =>
+      _t('$failed / $all 個下載失敗：$reason', '$failed of $all downloads failed: $reason');
+  static String get viewDownloads => _t('查看', 'View');
+
+  /// why DownloadManager gave up: an HTTP status from the device, or one of its ERROR_* codes
+  static String downloadReason(int reason) => switch (reason) {
+        401 => _t('配對碼失效，請重新配對', 'the pairing code is no longer valid, pair again'),
+        404 => _t('裝置上找不到這個檔案', 'the file isn\'t on the device'),
+        409 => _t('行駛中無法下載', 'not available while driving'),
+        1001 => _t('無法寫入手機', 'couldn\'t write the file on the phone'),
+        1004 || 1008 => _t('連線中斷', 'the connection dropped'),
+        1006 => _t('手機空間不足', 'not enough space on the phone'),
+        1009 => _t('已經有同名檔案', 'a file with that name exists already'),
+        _ => _t('代碼 $reason', 'code $reason'),
+      };
   static String downloadFailed(String e) => _t('下載失敗：$e', 'Download failed: $e');
   static String loadFailed(String e) => _t('讀取失敗：$e', 'Couldn\'t load: $e');
 
