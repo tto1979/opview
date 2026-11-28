@@ -124,13 +124,91 @@ class _RoutePageState extends State<RoutePage> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
   }
 
+  /// TOP refuses downloads while driving: say so instead of a failed download
+  Future<bool> _offroadOrSay() async {
+    if (!widget.api.needsPairing) return true;
+    try {
+      if (await widget.api.isOffroad()) return true;
+      _snack(T.onroadNoDownload);
+    } on ApiException catch (e) {
+      _snack(T.loadFailed(e.message));
+    }
+    return false;
+  }
+
+  /// queues one file with the system download manager, returns where it goes ('' if it failed)
+  Future<String> _queue(Segment s, String name) async {
+    try {
+      return await download(widget.api.downloadUrl('${s.name}/$name'), '${s.name}_$name');
+    } on DownloadException catch (e) {
+      _snack(T.downloadFailed(e.message));
+      return '';
+    }
+  }
+
+  Future<void> _downloadRlog(Segment s) async {
+    if (!await _offroadOrSay()) return;
+    final String? name;
+    try {
+      name = rlogOf(await widget.api.segmentFiles(s));
+    } on ApiException catch (e) {
+      _snack(T.loadFailed(e.message));
+      return;
+    }
+    if (name == null) {
+      _snack(T.noRlog);
+      return;
+    }
+    final where = await _queue(s, name);
+    if (where.isNotEmpty) _snack(T.downloading(where));
+  }
+
+  /// every segment's rlog, after showing how many files and how big
+  Future<void> _downloadAllRlogs() async {
+    if (!await _offroadOrSay()) return;
+    final picked = <(Segment, String, int)>[];
+    for (final s in widget.route.segments) {
+      try {
+        final files = await widget.api.segmentFiles(s);
+        final name = rlogOf(files);
+        if (name != null) picked.add((s, name, files[name] ?? 0));
+      } on ApiException {
+        continue;
+      }
+    }
+    if (picked.isEmpty) {
+      _snack(T.noRlog);
+      return;
+    }
+    if (!mounted) return;
+    final total = picked.fold<int>(0, (sum, p) => sum + p.$3);
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(T.allRlogsTitle),
+        content: Text(T.rlogFiles(picked.length, formatBytes(total))),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: Text(T.cancel)),
+          FilledButton(onPressed: () => Navigator.pop(context, true), child: Text(T.download)),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    var queued = 0;
+    var where = '';
+    for (final (s, name, _) in picked) {
+      final w = await _queue(s, name);
+      if (w.isEmpty) break;
+      where = w;
+      queued++;
+    }
+    if (queued > 0) _snack(T.downloadingMany(queued, where));
+  }
+
   Future<void> _downloadSheet(Segment s) async {
+    if (!await _offroadOrSay()) return;
     Map<String, int> files;
     try {
-      if (widget.api.needsPairing && !await widget.api.isOffroad()) {
-        _snack(T.onroadNoDownload);
-        return;
-      }
       files = await widget.api.segmentFiles(s);
     } on ApiException catch (e) {
       _snack(T.loadFailed(e.message));
@@ -157,12 +235,8 @@ class _RoutePageState extends State<RoutePage> {
       ),
     );
     if (picked == null) return;
-    try {
-      final where = await download(widget.api.downloadUrl('${s.name}/$picked'), '${s.name}_$picked');
-      _snack(T.downloading(where));
-    } on DownloadException catch (e) {
-      _snack(T.downloadFailed(e.message));
-    }
+    final where = await _queue(s, picked);
+    if (where.isNotEmpty) _snack(T.downloading(where));
   }
 
   static int _compareFiles(String a, String b) {
@@ -181,6 +255,10 @@ class _RoutePageState extends State<RoutePage> {
       appBar: AppBar(
         toolbarHeight: 48,
         title: Text(r.start.isEmpty ? r.route : r.start),
+        actions: [
+          TextButton.icon(onPressed: _downloadAllRlogs, icon: const Icon(Icons.download), label: Text(T.allRlogs)),
+          const SizedBox(width: 8),
+        ],
       ),
       body: SafeArea(
         top: false,
@@ -188,7 +266,7 @@ class _RoutePageState extends State<RoutePage> {
           children: [
             Expanded(child: _player()),
             const VerticalDivider(width: 1),
-            SizedBox(width: 280, child: _segmentList()),
+            SizedBox(width: 320, child: _segmentList()),
           ],
         ),
       ),
@@ -257,10 +335,28 @@ class _RoutePageState extends State<RoutePage> {
           title: Text(T.segment(s.index)),
           subtitle: s.size > 0 ? Text(formatBytes(s.size)) : null,
           onTap: s.playable ? () => _play(s) : null,
-          trailing: IconButton(
-            icon: const Icon(Icons.download),
-            tooltip: T.download,
-            onPressed: () => _downloadSheet(s),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // rlog in one tap (TOP knows the files already, dashy lists them on tap)
+              if (s.files == null || rlogOf(s.files!) != null)
+                Tooltip(
+                  message: T.downloadRlog,
+                  child: TextButton(
+                    style: TextButton.styleFrom(
+                      minimumSize: const Size(48, 36),
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                    ),
+                    onPressed: () => _downloadRlog(s),
+                    child: const Text('rlog'),
+                  ),
+                ),
+              IconButton(
+                icon: const Icon(Icons.download),
+                tooltip: T.download,
+                onPressed: () => _downloadSheet(s),
+              ),
+            ],
           ),
         );
       },

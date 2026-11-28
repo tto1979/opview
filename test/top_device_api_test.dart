@@ -196,6 +196,13 @@ void main() {
     expect(classifyError('Failed host lookup'), Probe.other);
   });
 
+  test('rlogOf', () {
+    expect(rlogOf({'qcamera.ts': 1, 'rlog.zst': 2}), 'rlog.zst');
+    expect(rlogOf({'rlog.bz2': 2}), 'rlog.bz2');
+    expect(rlogOf({'rlog': 2}), 'rlog');
+    expect(rlogOf({'qlog.zst': 1}), isNull);
+  });
+
   test('htmlToText', () {
     expect(htmlToText('<b>WARNING</b><br><br>text &amp; more'), 'WARNING\n\ntext & more');
     expect(htmlToText('intro<br><h4>Title</h4><br>body'), 'intro\n\nTitle\n\nbody');

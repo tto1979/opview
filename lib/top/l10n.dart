@@ -64,6 +64,13 @@ class T {
   static String get max => _t('最大', 'MAX');
   static String personality(int i) => const [['積極', 'Aggressive'], ['標準', 'Standard'], ['從容', 'Relaxed']][i][zh ? 0 : 1];
 
+  static String get downloadRlog => _t('下載 rlog', 'Download rlog');
+  static String get allRlogs => _t('全部 rlog', 'All rlogs');
+  static String get allRlogsTitle => _t('下載整趟行程的 rlog', 'Download the drive\'s rlogs');
+  static String get noRlog => _t('沒有 rlog', 'No rlog');
+  static String rlogFiles(int n, String size) => _t('$n 個檔案${size.isEmpty ? '' : '，共 $size'}', '$n files${size.isEmpty ? '' : ', $size'}');
+  static String downloadingMany(int n, String where) => _t('開始下載 $n 個檔案，存到 $where', 'Downloading $n files to $where');
+
   static String segments(int n) => _t('$n 段', '$n segments');
   static String minutes(int n) => _t('$n 分鐘', '$n min');
   static String segment(int i) => _t('第 ${i + 1} 段', 'Segment ${i + 1}');

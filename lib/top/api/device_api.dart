@@ -199,6 +199,16 @@ class RouteInfo {
   }
 }
 
+const _rlogNames = ['rlog.zst', 'rlog.bz2', 'rlog'];
+
+/// a segment's rlog file name, null if it has none
+String? rlogOf(Map<String, int> files) {
+  for (final name in _rlogNames) {
+    if (files.containsKey(name)) return name;
+  }
+  return null;
+}
+
 /// dashy has no /api/routes: group the log root's segment folders into drives
 List<RouteInfo> routesFromFiles(dynamic data) {
   final files = (data is Map ? data['files'] : null) as List? ?? const [];
