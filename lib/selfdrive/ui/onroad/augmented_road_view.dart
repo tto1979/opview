@@ -16,6 +16,7 @@ import 'package:opview/selfdrive/ui/ui_state.dart';
 import 'package:opview/selfdrive/ui/onroad/model_renderer.dart';
 import 'package:opview/selfdrive/ui/onroad/hud_renderer.dart';
 import 'package:opview/selfdrive/ui/onroad/alert_renderer.dart';
+import 'package:opview/top/onroad/top_hud.dart';
 
 // -- border colors (augmented_road_view.py:23-27) --
 
@@ -101,6 +102,7 @@ class _AugmentedRoadViewState extends State<AugmentedRoadView> {
                       fit: StackFit.expand,
                       children: [
                         HudRenderer(uiState: widget.uiState, scale: scale),
+                        if (widget.uiState.top.isTop) TopHudLayer(uiState: widget.uiState, scale: scale),
                         AlertRenderer(uiState: widget.uiState, scale: scale),
                       ],
                     ),
@@ -114,6 +116,7 @@ class _AugmentedRoadViewState extends State<AugmentedRoadView> {
                 painter: _EngagementBorderPainter(
                   status: widget.uiState.status,
                   borderSize: borderSize,
+                  top: topBorder(widget.uiState),
                 ),
               ),
 
@@ -280,8 +283,9 @@ class _ContentClipper extends CustomClipper<Rect> {
 class _EngagementBorderPainter extends CustomPainter {
   final UIStatus status;
   final double borderSize;
+  final TopBorder? top; // TOP device: ALKA color, blinker / blind spot on the sides
 
-  _EngagementBorderPainter({required this.status, required this.borderSize});
+  _EngagementBorderPainter({required this.status, required this.borderSize, this.top});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -297,15 +301,30 @@ class _EngagementBorderPainter extends CustomPainter {
       borderSize / 2, borderSize / 2,
       size.width - borderSize, size.height - borderSize,
     );
-    final borderColor = borderColors[status] ?? borderColors[UIStatus.disengaged]!;
+    final borderColor = top?.color ?? borderColors[status] ?? borderColors[UIStatus.disengaged]!;
     final rrect = RRect.fromRectAndRadius(innerRect, Radius.circular(borderSize * 1.2));
     canvas.drawRRect(rrect, Paint()
       ..color = borderColor
       ..style = PaintingStyle.stroke
       ..strokeWidth = borderSize);
+
+    // TOP: the border's left / right fifth in the blinker / blind spot color
+    final top = this.top;
+    if (top == null) return;
+    final width = size.width * TopBorder.width;
+    for (final (color, x) in [(top.left, 0.0), (top.right, size.width - width)]) {
+      if (color == null) continue;
+      canvas.save();
+      canvas.clipRect(Rect.fromLTWH(x, 0, width, size.height));
+      canvas.drawRRect(rrect, Paint()
+        ..color = color
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = borderSize);
+      canvas.restore();
+    }
   }
 
   @override
   bool shouldRepaint(_EngagementBorderPainter old) =>
-    old.status != status || old.borderSize != borderSize;
+    old.status != status || old.borderSize != borderSize || top != null || old.top != null;
 }

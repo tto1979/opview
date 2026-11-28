@@ -19,6 +19,7 @@ import 'package:opview/services/impl/mdns_discovery.dart';
 import 'package:opview/services/impl/webrtc_transport.dart';
 import 'package:opview/services/impl/cereal_adapter.dart';
 import 'package:opview/services/wake_lock_service.dart' as wake_lock;
+import 'package:opview/top/onroad/top_live.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -40,6 +41,7 @@ class ConnectionManager {
   final Discovery _discovery;
   final Transport _transport;
   final TelemetryAdapter _adapter;
+  final TopLive _topLive; // TOP device: TOP's HUD
 
   dynamic get videoRenderer => _transport.videoRenderer;
 
@@ -59,7 +61,8 @@ class ConnectionManager {
     TelemetryAdapter? adapter,
   })  : _discovery = discovery ?? MdnsDiscovery(),
         _transport = transport ?? WebRTCTransport(),
-        _adapter = adapter ?? CerealAdapter();
+        _adapter = adapter ?? CerealAdapter(),
+        _topLive = TopLive(_uiState);
 
   String? _host;
   String? _knownHost; // last host seen (cached, found or typed in), for the drives & settings pages
@@ -163,6 +166,10 @@ class ConnectionManager {
     _stateSub = null;
 
     try {
+      // TOP device: its HUD settings, and the TOP messages in the stream request
+      await _topLive.check(_host!);
+      if (epoch != _connectEpoch) return;
+      if (_uiState.top.isTop) _setStatus('TOP device, TOP HUD');
       _setStatus('connecting to $_host (camera: $_streamType)');
       await _transport.connect(_host!, camera: _streamType);
       if (epoch != _connectEpoch) return; // superseded by newer connect
@@ -170,6 +177,7 @@ class ConnectionManager {
       _listenData();
       _listenState();
       _setConnected(true);
+      _topLive.start(_host!);
       _stopDiscovery(); // connected — stop any parallel mDNS
       _saveCachedHost(_host!);
       _setStatus('connected');
@@ -241,6 +249,7 @@ class ConnectionManager {
   void _teardown() {
     _connectEpoch++;  // invalidate any in-flight _transport.connect()
     _retryTimer?.cancel();
+    _topLive.stop();
     _dataSub?.cancel();
     _stateSub?.cancel();
     _stateSub = null;
@@ -257,6 +266,7 @@ class ConnectionManager {
     _reconnecting = true;
 
     _retryTimer?.cancel();
+    _topLive.stop();
     _dataSub?.cancel();
     _stateSub?.cancel();
     _stateSub = null;
@@ -351,6 +361,7 @@ class ConnectionManager {
     _teardown();
     _deviceSub?.cancel();
     _discovery.dispose();
+    _topLive.dispose();
     await _transport.dispose();
   }
 }

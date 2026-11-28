@@ -5,6 +5,7 @@
 // data-driven refresh: notifyListeners on modelV2 arrival.
 
 import 'package:flutter/foundation.dart';
+import 'package:opview/top/onroad/top_state.dart';
 
 // -- constants --
 
@@ -83,6 +84,9 @@ class UIState extends ChangeNotifier {
 
   // active camera: 'road' or 'wideRoad' (switches on experimental mode)
   String streamType = 'road';
+
+  // TOP device: TOP's HUD state (lib/top/onroad)
+  final TopState top = TopState();
 
   // connection state — drives "Connecting..." overlay + screen wake lock
   bool isConnected = false;

@@ -52,6 +52,18 @@ class T {
   static String get onroadNoDownload => _t('行駛中無法下載', 'Not available while driving');
   static String get notPlayable => _t('沒有可播放的影片', 'No playable video');
 
+  // onroad HUD (same words as the device's TOP HUD)
+  static String get near => _t('接近', 'Near');
+  static String get km => _t('公里', 'km');
+  static String get meter => _t('公尺', 'm');
+  static String get mile => _t('英里', 'mi');
+  static String get foot => _t('英尺', 'ft');
+  static String get ahead => _t('前方', 'AHEAD');
+  static String get speedSign => _t('時速', 'SPEED');
+  static String get limitSign => _t('速限', 'LIMIT');
+  static String get max => _t('最大', 'MAX');
+  static String personality(int i) => const [['積極', 'Aggressive'], ['標準', 'Standard'], ['從容', 'Relaxed']][i][zh ? 0 : 1];
+
   static String segments(int n) => _t('$n 段', '$n segments');
   static String minutes(int n) => _t('$n 分鐘', '$n min');
   static String segment(int i) => _t('第 ${i + 1} 段', 'Segment ${i + 1}');

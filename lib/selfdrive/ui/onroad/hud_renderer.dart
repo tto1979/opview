@@ -6,6 +6,8 @@
 
 import 'package:flutter/material.dart';
 import 'package:opview/selfdrive/ui/ui_state.dart';
+import 'package:opview/top/l10n.dart';
+import 'package:opview/top/onroad/top_hud.dart';
 
 // -- constants (hud_renderer.py) --
 
@@ -61,7 +63,7 @@ class HudRenderer extends StatelessWidget {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [HudColors.headerGradientStart, HudColors.headerGradientEnd],
+            colors: [topHeaderGradientStart(uiState) ?? HudColors.headerGradientStart, HudColors.headerGradientEnd],
           ),
         ),
       ),
@@ -85,6 +87,13 @@ class HudRenderer extends StatelessWidget {
       }
     }
 
+    // TOP: speed limit assist / override colors
+    final topColors = topSetSpeedColors(uiState);
+    if (topColors != null) {
+      maxColor = topColors.max;
+      speedColor = topColors.speed;
+    }
+
     final speedText = uiState.isCruiseSet ? '${uiState.setSpeed.round()}' : '\u2013';
 
     return Positioned(
@@ -101,7 +110,7 @@ class HudRenderer extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text('MAX',
+            Text(uiState.top.isTop ? T.max : 'MAX',
               style: TextStyle(
                 color: maxColor,
                 fontSize: _fontMaxSpeed * scale,

@@ -69,9 +69,11 @@ class CerealAdapter implements TelemetryAdapter {
     switch (type) {
       case 'carState':
         state.applyCarState(data);
+        state.top.applyCarState(data);
         return false; // don't notify yet
       case 'selfdriveState':
         state.applySelfdriveState(data);
+        state.top.applySelfdriveState(data);
         return false;
       case 'controlsState':
         state.applyControlsState(data);
@@ -93,6 +95,19 @@ class CerealAdapter implements TelemetryAdapter {
         return false;
       case 'roadCameraState':
         state.applyRoadCameraState(data);
+        return false;
+      // TOP devices only (lib/top/onroad/top_live.dart)
+      case 'longitudinalPlanTOP':
+        state.top.applyLongitudinalPlanTOP(data);
+        return false;
+      case 'liveMapDataTOP':
+        state.top.applyLiveMapDataTOP(data);
+        return false;
+      case 'topControlsState':
+        state.top.applyTopControlsState(data);
+        return false;
+      case 'carControl':
+        state.top.applyCarControl(data);
         return false;
       default:
         return false;

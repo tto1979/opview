@@ -5,6 +5,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:opview/data/models.dart';
+import 'package:opview/top/onroad/top_live.dart';
 
 // everything the stock UI subscribes to
 const bridgeServicesOut = [
@@ -24,7 +25,7 @@ Future<Map<String, dynamic>> postStream(String host, String offerSdp, {String ca
   final request = StreamRequest(
     sdp: offerSdp,
     cameras: [camera],
-    bridgeServicesOut: bridgeServicesOut,
+    bridgeServicesOut: [...bridgeServicesOut, ...extraBridgeServices], // + TOP's on TOP devices
   );
 
   final url = Uri.parse('http://$host:5001/stream');

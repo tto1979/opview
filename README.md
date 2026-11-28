@@ -59,6 +59,7 @@ With [TOP](https://github.com/tto1979/openpilot) (main-0.11.1 and later) the app
 3. Enter the pairing code once: the 6 digits at the end of the "Enable opview" description (C4: the opview pairing code card)
 
 - **Drives**: the preview video (whole drive), downloads of each segment's videos and logs to the phone's Download/topview. Not while driving.
+- **Live view**: TOP devices get TOP's HUD: speed limit sign (offset, upcoming limit, speed limit assist arrows), V-TSC / M-TSC, personality icon, turn signals and blind spot, brake lights, road name, ALKA border, with the device's units and display settings.
 - **Settings**: the TOP panel, car model, common openpilot toggles, personalities, speed limit. Translated to the phone's language; settings that can't be changed right now say why.
 - The device's IP can be typed in when it isn't found (also used by the live view).
 - dragonpilot's dashy (port 5088) works too, without pairing and whole-drive playback.
