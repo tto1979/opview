@@ -138,10 +138,14 @@ class TopHudLayer extends StatelessWidget {
   /// text centered in a box (scaled rect), may be wider than it
   Widget _textIn(Rect box, String text, double size, Color color, FontWeight weight) => Positioned.fromRect(
         rect: box,
+        // min 0: OverflowBox passes the box's tight size on as the minimum otherwise, the text then fills the
+        // whole box and sits in its top left corner
         child: OverflowBox(
+          minWidth: 0,
+          minHeight: 0,
           maxWidth: double.infinity,
           maxHeight: double.infinity,
-          child: Text(text, maxLines: 1, softWrap: false, style: _style(size, color, weight)),
+          child: Text(text, maxLines: 1, softWrap: false, textAlign: TextAlign.center, style: _style(size, color, weight)),
         ),
       );
 

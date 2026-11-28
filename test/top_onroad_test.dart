@@ -223,6 +223,12 @@ void main() {
       await pump(tester, s);
       expect(tester.takeException(), isNull);
       expect(find.text('50'), findsOneWidget);
+      // centered in the sign's white circle (the layer is at 30, 30): sized to the text, not the circle
+      final center = tester.getCenter(find.text('50'));
+      expect(center.dx, closeTo(30 + 280 + 100, 2));
+      expect(center.dy, closeTo(30 + 45 + 102, 2));
+      expect(tester.getSize(find.text('50')).width, lessThan(152));
+      expect(tester.getSize(find.text('V-TSC')).width, lessThan(160));
       expect(find.text('5'), findsOneWidget);
       expect(find.text('AHEAD'), findsOneWidget);
       expect(find.text('V-TSC'), findsOneWidget);
