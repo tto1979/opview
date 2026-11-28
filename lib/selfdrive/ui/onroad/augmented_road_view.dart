@@ -309,10 +309,10 @@ class _EngagementBorderPainter extends CustomPainter {
       ..strokeWidth = borderSize);
 
     // TOP: the border's left / right fifth in the blinker / blind spot color
-    final top = this.top;
-    if (top == null) return;
+    final sides = top;
+    if (sides == null) return;
     final width = size.width * TopBorder.width;
-    for (final (color, x) in [(top.left, 0.0), (top.right, size.width - width)]) {
+    for (final (color, x) in [(sides.left, 0.0), (sides.right, size.width - width)]) {
       if (color == null) continue;
       canvas.save();
       canvas.clipRect(Rect.fromLTWH(x, 0, width, size.height));
