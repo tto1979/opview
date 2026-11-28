@@ -156,7 +156,7 @@ class _RoutePageState extends State<RoutePage> {
   }
 
   /// starts the downloads and says how they ended: where the files are, or why they failed
-  Future<void> _start(List<(Segment, String)> files) async {
+  Future<void> _startDownloads(List<(Segment, String)> files) async {
     final queued = <QueuedDownload>[];
     for (final (s, name) in files) {
       final q = await _queue(s, name);
@@ -205,7 +205,7 @@ class _RoutePageState extends State<RoutePage> {
       _snack(T.noRlog);
       return;
     }
-    await _start([(s, name)]);
+    await _startDownloads([(s, name)]);
   }
 
   /// every segment's rlog, after showing how many files and how big
@@ -239,7 +239,7 @@ class _RoutePageState extends State<RoutePage> {
       ),
     );
     if (ok != true) return;
-    await _start([for (final (s, name, _) in picked) (s, name)]);
+    await _startDownloads([for (final (s, name, _) in picked) (s, name)]);
   }
 
   Future<void> _downloadSheet(Segment s) async {
@@ -272,7 +272,7 @@ class _RoutePageState extends State<RoutePage> {
       ),
     );
     if (picked == null) return;
-    await _start([(s, picked)]);
+    await _startDownloads([(s, picked)]);
   }
 
   static int _compareFiles(String a, String b) {
