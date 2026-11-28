@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
@@ -198,16 +199,55 @@ void main() {
     expect(classifyError('Failed host lookup'), Probe.other);
   });
 
-  test('download states and reasons', () {
-    expect(downloadStateOf(8), DownloadState.done);
-    expect(downloadStateOf(16), DownloadState.failed);
-    expect(const DownloadStatus(DownloadState.running).ended, isFalse);
-    expect(const DownloadStatus(DownloadState.gone).ended, isTrue);
+  group('FileDownloader', () {
+    late Directory dir;
+    setUp(() async => dir = await Directory.systemTemp.createTemp('topview_test'));
+    tearDown(() async => dir.delete(recursive: true));
+
+    FileDownloader downloader(http.StreamedResponse Function() respond, {List<int>? saved}) => FileDownloader(
+          newClient: () => MockClient.streaming((request, body) async => respond()),
+          tempDir: () async => dir.path,
+          save: (path, name) async {
+            saved?.addAll(await File(path).readAsBytes());
+            return 'Download/topview/$name';
+          },
+        );
+
+    test('downloads into the cache, saves, cleans up', () async {
+      final saved = <int>[];
+      final progress = <int>[];
+      final d = downloader(() => http.StreamedResponse(Stream.fromIterable([[1, 2], [3]]), 200, contentLength: 3), saved: saved);
+      final where = await d.fetch(Uri.parse('http://10.0.0.2:5001/download/a--1/rlog.zst'), 'a--1_rlog.zst',
+          onProgress: (got, total) => progress.add(got));
+      expect(where, 'Download/topview/a--1_rlog.zst');
+      expect(saved, [1, 2, 3]);
+      expect(progress, [2, 3]);
+      expect(dir.listSync(), isEmpty);
+      expect(d.busy, isFalse);
+    });
+
+    test('the device refusing', () async {
+      final d = downloader(() => http.StreamedResponse(Stream.fromIterable([utf8.encode('{"code": "onroad"}')]), 409));
+      await expectLater(
+        d.fetch(Uri.parse('http://10.0.0.2:5001/download/a--1/rlog.zst'), 'a--1_rlog.zst'),
+        throwsA(isA<DownloadException>().having((e) => e.status, 'status', 409)),
+      );
+      expect(dir.listSync(), isEmpty);
+    });
+
+    test('cut off', () async {
+      final d = downloader(() => http.StreamedResponse(Stream.fromIterable([[1, 2, 3]]), 200, contentLength: 10));
+      await expectLater(
+        d.fetch(Uri.parse('http://10.0.0.2:5001/download/a--1/rlog.zst'), 'a--1_rlog.zst'),
+        throwsA(isA<DownloadException>().having((e) => e.message, 'message', contains('incomplete'))),
+      );
+    });
+  });
+
+  test('download reasons', () {
     T.zh = false;
     expect(T.downloadReason(409), 'not available while driving');
-    expect(T.downloadReason(1006), 'not enough space on the phone');
-    expect(T.downloadReason(1234), 'code 1234');
-    expect(const QueuedDownload(1, 'Download/topview', 'a--1_rlog.zst').path, 'Download/topview/a--1_rlog.zst');
+    expect(T.downloadReason(500), 'HTTP 500');
   });
 
   test('rlogOf', () {

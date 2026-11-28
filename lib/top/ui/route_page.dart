@@ -28,6 +28,13 @@ class _RoutePageState extends State<RoutePage> {
 
   late final List<Segment> _playable = widget.route.segments.where((s) => s.playable).toList();
 
+  // downloads, one at a time (the screen stays on while this page is open)
+  final _downloader = FileDownloader();
+  String? _downloadName; // the file being downloaded, null when none
+  double? _downloadProgress; // 0..1, null while the size isn't known
+  int _downloadIndex = 0;
+  int _downloadCount = 0;
+
   @override
   void initState() {
     super.initState();
@@ -37,6 +44,7 @@ class _RoutePageState extends State<RoutePage> {
 
   @override
   void dispose() {
+    _downloader.cancel();
     _controller?.removeListener(_onTick);
     _controller?.dispose();
     super.dispose();
@@ -136,16 +144,6 @@ class _RoutePageState extends State<RoutePage> {
     return false;
   }
 
-  /// queues one file with the system download manager, null if it couldn't
-  Future<QueuedDownload?> _queue(Segment s, String name) async {
-    try {
-      return await download(widget.api.downloadUrl('${s.name}/$name'), '${s.name}_$name');
-    } on DownloadException catch (e) {
-      _snack(T.downloadFailed(e.message));
-      return null;
-    }
-  }
-
   void _snackWithDownloads(String text) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -155,41 +153,52 @@ class _RoutePageState extends State<RoutePage> {
     ));
   }
 
-  /// starts the downloads and says how they ended: where the files are, or why they failed
+  /// downloads the files one after the other into Download/topview, then says where they are or why one failed
   Future<void> _startDownloads(List<(Segment, String)> files) async {
-    final queued = <QueuedDownload>[];
-    for (final (s, name) in files) {
-      final q = await _queue(s, name);
-      if (q == null) break;
-      queued.add(q);
+    if (_downloadName != null) {
+      _snack(T.downloadBusy);
+      return;
     }
-    if (queued.isEmpty) return;
-    _snackWithDownloads(T.downloading(queued.length == 1 ? queued.first.path : queued.first.folder));
-
-    final pending = {for (final q in queued) q.id};
-    final failed = <int>[];
-    var done = 0;
-    final end = DateTime.now().add(const Duration(minutes: 30));
-    while (pending.isNotEmpty && mounted && DateTime.now().isBefore(end)) {
-      await Future.delayed(const Duration(seconds: 2));
-      for (final id in pending.toList()) {
-        final status = await downloadStatus(id);
-        if (!status.ended) continue;
-        pending.remove(id);
-        if (status.state == DownloadState.done) {
-          done++;
-        } else if (status.state == DownloadState.failed) {
-          failed.add(status.reason);
-        }
+    final saved = <String>[];
+    String? failure;
+    for (var i = 0; i < files.length; i++) {
+      final (s, name) = files[i];
+      final fileName = '${s.name}_$name';
+      setState(() {
+        _downloadName = fileName;
+        _downloadProgress = null;
+        _downloadIndex = i + 1;
+        _downloadCount = files.length;
+      });
+      try {
+        saved.add(await _downloader.fetch(widget.api.downloadUrl('${s.name}/$name'), fileName, onProgress: (got, total) {
+          if (!mounted || total <= 0) return;
+          final progress = got / total;
+          // redraw at most every percent
+          if (_downloadProgress == null || progress - _downloadProgress! >= 0.01 || got == total) {
+            setState(() => _downloadProgress = progress);
+          }
+        }));
+      } on DownloadException catch (e) {
+        if (!e.cancelled) failure = _downloadError(e);
+        break;
       }
+      if (!mounted) return;
     }
-    if (failed.isNotEmpty) {
-      _snackWithDownloads(queued.length == 1
-          ? T.downloadFailed(T.downloadReason(failed.first))
-          : T.downloadsFailed(failed.length, queued.length, T.downloadReason(failed.first)));
-    } else if (done == queued.length) {
-      _snackWithDownloads(queued.length == 1 ? T.downloaded(queued.first.path) : T.downloadedMany(done, queued.first.folder));
+    if (!mounted) return;
+    setState(() => _downloadName = null);
+    if (failure != null) {
+      _snackWithDownloads(files.length == 1 ? T.downloadFailed(failure) : T.downloadsFailed(files.length - saved.length, files.length, failure));
+    } else if (saved.length == files.length) {
+      final folder = saved.first.contains('/') ? saved.first.substring(0, saved.first.lastIndexOf('/')) : saved.first;
+      _snackWithDownloads(saved.length == 1 ? T.downloaded(saved.first) : T.downloadedMany(saved.length, folder));
     }
+  }
+
+  static String _downloadError(DownloadException e) {
+    if (e.status != null) return T.downloadReason(e.status!);
+    if (e.timedOut) return T.downloadTimedOut;
+    return e.message;
   }
 
   Future<void> _downloadRlog(Segment s) async {
@@ -303,7 +312,15 @@ class _RoutePageState extends State<RoutePage> {
           children: [
             Expanded(child: _player()),
             const VerticalDivider(width: 1),
-            SizedBox(width: 320, child: _segmentList()),
+            SizedBox(
+              width: 320,
+              child: Column(
+                children: [
+                  if (_downloadName != null) _downloadPanel(),
+                  Expanded(child: _segmentList()),
+                ],
+              ),
+            ),
           ],
         ),
       ),
@@ -358,6 +375,37 @@ class _RoutePageState extends State<RoutePage> {
   Widget _message(String text) => Center(
         child: Padding(padding: const EdgeInsets.all(24), child: Text(text, textAlign: TextAlign.center)),
       );
+
+  /// what's downloading, how far, and a cancel button
+  Widget _downloadPanel() {
+    final theme = Theme.of(context);
+    final percent = _downloadProgress == null ? '' : ' ${(_downloadProgress! * 100).round()}%';
+    return Material(
+      color: theme.colorScheme.surfaceContainerHighest,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 6, 4, 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    '${T.downloadingFile}${_downloadCount > 1 ? ' $_downloadIndex/$_downloadCount' : ''}$percent',
+                    style: theme.textTheme.labelLarge,
+                  ),
+                ),
+                TextButton(onPressed: _downloader.cancel, child: Text(T.cancel)),
+              ],
+            ),
+            Text(_downloadName ?? '', maxLines: 1, overflow: TextOverflow.ellipsis, style: theme.textTheme.bodySmall),
+            const SizedBox(height: 6),
+            LinearProgressIndicator(value: _downloadProgress),
+          ],
+        ),
+      ),
+    );
+  }
 
   Widget _segmentList() {
     final current = _currentSegment;
