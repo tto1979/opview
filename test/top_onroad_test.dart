@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:opview/selfdrive/ui/onroad/hud_renderer.dart';
 import 'package:opview/selfdrive/ui/ui_state.dart';
 import 'package:opview/top/l10n.dart';
 import 'package:opview/top/onroad/top_hud.dart';
@@ -37,6 +38,9 @@ Map<String, dynamic> _plan({
         'map': {'enabled': false, 'active': false},
       },
     };
+
+Finder _asset(String name) =>
+    find.byWidgetPredicate((w) => w is Image && w.image is AssetImage && (w.image as AssetImage).assetName == 'assets/top/$name');
 
 void main() {
   setUp(() => T.zh = false);
@@ -235,7 +239,26 @@ void main() {
       expect(find.text('V-TSC'), findsOneWidget);
       expect(find.text('中山北路'), findsOneWidget);
       expect(find.text('Aggressive'), findsOneWidget);
-      expect(find.byType(Image), findsNWidgets(2)); // both blinkers
+      expect(find.byType(Image), findsNWidgets(3)); // both blinkers, the logo
+      expect(_asset('button_home.png'), findsOneWidget);
+      s.applySelfdriveState({'experimentalMode': true, 'enabled': true});
+      await tester.pumpWidget(MaterialApp(
+        home: Center(child: SizedBox(width: 2100, height: 1020, child: TopHudLayer(uiState: s, scale: 1.0))),
+      ));
+      expect(_asset('experimental.png'), findsOneWidget);
+      s.dispose();
+    });
+
+    testWidgets('current speed where the device draws it, under the road name', (tester) async {
+      final s = driving(metric: true);
+      await tester.binding.setSurfaceSize(const Size(2160, 1080));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      await tester.pumpWidget(MaterialApp(
+        home: Center(child: SizedBox(width: 2100, height: 1020, child: Stack(children: [HudRenderer(uiState: s, scale: 1.0)]))),
+      ));
+      expect(tester.getCenter(find.text('72')).dy, closeTo(30 + 150, 2)); // 20 m/s
+      expect(tester.getCenter(find.text('km/h')).dy, closeTo(30 + 260, 2));
+      expect(tester.getTopLeft(find.text('72')).dy, greaterThan(30 + 56)); // the road name box ends at 56
       s.dispose();
     });
 

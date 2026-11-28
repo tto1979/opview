@@ -137,6 +137,25 @@ class HudRenderer extends StatelessWidget {
     final speedText = '${uiState.displaySpeed.round()}';
     final unitText = uiState.isMetric ? 'km/h' : 'mph';
 
+    // TOP: where the device draws them (centers at y 180 / 290 on its screen, 150 / 260 inside the border),
+    // lower than centered in the header: TOP's road name sits above
+    if (uiState.top.isTop) {
+      Widget at(double centerY, double size, String text, Color color, FontWeight weight) => Positioned(
+            left: 0,
+            right: 0,
+            top: (centerY - size / 2) * scale,
+            child: Text(text,
+                textAlign: TextAlign.center,
+                style: TextStyle(color: color, fontSize: size * scale, fontWeight: weight, height: 1.0)),
+          );
+      return Positioned.fill(
+        child: Stack(children: [
+          at(150, _fontCurrentSpeed, speedText, HudColors.white, FontWeight.bold),
+          at(260, _fontSpeedUnit, unitText, HudColors.whiteTranslucent, FontWeight.w500),
+        ]),
+      );
+    }
+
     return Positioned(
       top: 0,
       left: 0,

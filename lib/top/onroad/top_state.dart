@@ -81,6 +81,7 @@ class TopState {
   bool rightBlindspot = false;
 
   // selfdriveState
+  bool engageable = true; // the experimental mode button is dimmed when not
   int personality = 1; // aggressive, standard, relaxed
   int? _lastPersonality;
   double personalityChangedAt = -100;
@@ -132,6 +133,7 @@ class TopState {
   }
 
   void applySelfdriveState(Map<String, dynamic> data) {
+    engageable = _b(data['engageable']) || _b(data['enabled']);
     const names = {'aggressive': 0, 'standard': 1, 'relaxed': 2};
     final p = data['personality'];
     personality = (p is num ? p.toInt() : names[p]) ?? 1;

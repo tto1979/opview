@@ -7,6 +7,7 @@
 //   and the speed limit assist +/- arrows; set speed colors for speed limit assist
 // - Smart Cruise Control V-TSC / M-TSC badges
 // - driving personality icon, turn signal / blind spot animation
+// - the TOP logo in the experimental mode button's place (the experimental icon in experimental mode)
 // - ALKA border color, blinker / blind spot on the sides of the border
 
 import 'dart:math';
@@ -114,6 +115,7 @@ class TopHudLayer extends StatelessWidget {
         _sccBadges(out, w, h);
         _speedLimit(out);
       }
+      _expButton(out, w);
       if (top.personalityWheel && uiState.alertSize == 0) _personality(out, w, h);
       if (top.timSignals && (top.leftBlinker || top.rightBlinker)) _turnSignals(out, w, h);
       return Stack(children: out);
@@ -333,6 +335,22 @@ class TopHudLayer extends StatelessWidget {
     final x = sign.left + sign.width + 36;
     final y = sign.top + sign.height / 2 - size / 2 + (up ? bounce : -bounce);
     out.add(_image(_r(x, y, size, size), up ? 'img_plus_arrow_up.png' : 'img_minus_arrow_down.png'));
+  }
+
+  // -- experimental mode button: TOP's logo, no dark circle (exp_button.py + TopHudRenderer) --
+
+  void _expButton(List<Widget> out, double w) {
+    const buttonSize = 192.0;
+    const iconSize = 144.0;
+    final cx = w - 30 - buttonSize / 2;
+    const cy = 30 + buttonSize / 2;
+    final experimental = uiState.experimentalMode;
+    final size = experimental ? iconSize : iconSize * 1.4;
+    out.add(_image(
+      _r(cx - size / 2, cy - size / 2, size, size),
+      experimental ? 'experimental.png' : 'button_home.png',
+      opacity: uiState.top.engageable ? 1.0 : 180 / 255,
+    ));
   }
 
   // -- personality --
