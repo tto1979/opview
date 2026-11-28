@@ -227,8 +227,9 @@ void main() {
       final center = tester.getCenter(find.text('50'));
       expect(center.dx, closeTo(30 + 280 + 100, 2));
       expect(center.dy, closeTo(30 + 45 + 102, 2));
-      expect(tester.getSize(find.text('50')).width, lessThan(152));
-      expect(tester.getSize(find.text('V-TSC')).width, lessThan(160));
+      // the test font's glyphs are squares (width = size per glyph): check the height, which used to be the box's
+      expect(tester.getSize(find.text('50')).height, lessThan(152));
+      expect(tester.getSize(find.text('V-TSC')).height, lessThan(52));
       expect(find.text('5'), findsOneWidget);
       expect(find.text('AHEAD'), findsOneWidget);
       expect(find.text('V-TSC'), findsOneWidget);
