@@ -22,12 +22,23 @@ final _segmentRe = RegExp(r'^(.+)--(\d+)$');
 
 enum ApiFlavor { top, dashy }
 
+/// what the TOP port answered when looking for the API
+enum Probe {
+  ok,
+  notFound, // something answers on 5001, without the opview API (TOP not updated, or not TOP)
+  refused, // the device is there, nothing listens on 5001 (opview off, webrtcd not running)
+  unreachable, // no answer at all (wrong IP, other network, router isolates clients)
+  other,
+}
+
 class ApiException implements Exception {
   final int status; // 0: no response
   final String message;
   final String? code;
+  final Probe? probe; // no_api: what the TOP port answered
+  final String detail; // no_api: what each port answered, for the user to report
 
-  ApiException(this.status, this.message, {this.code});
+  ApiException(this.status, this.message, {this.code, this.probe, this.detail = ''});
 
   bool get unpaired => status == 401;
   bool get onroad => code == 'onroad';
@@ -254,25 +265,37 @@ class DeviceApi {
 
   /// find which API the device has: TOP first, then dashy
   Future<DeviceInfo> connect() async {
+    final details = <String>[];
+    Probe? topProbe;
     for (final candidate in [ApiFlavor.top, ApiFlavor.dashy]) {
       flavor = candidate;
+      Probe probe;
+      String what;
       try {
         final r = await _client.get(uri('/api/init'), headers: _headers()).timeout(_probeTimeout);
-        if (r.statusCode != 200) continue;
-        final data = _decode(r);
-        if (data is! Map) continue;
-        final found = DeviceInfo.fromInit(data.cast<String, dynamic>());
+        final data = r.statusCode == 200 ? _decode(r) : null;
+        final found = data is Map ? DeviceInfo.fromInit(data.cast<String, dynamic>()) : null;
         // dragonpilot's webrtcd on 5001 has no /api/init, so a TOP reply here is always TOP
-        if (candidate == ApiFlavor.top && found.flavor != ApiFlavor.top) continue;
-        flavor = found.flavor;
-        info = found;
-        return found;
-      } catch (_) {
-        continue;
+        if (found != null && (candidate != ApiFlavor.top || found.flavor == ApiFlavor.top)) {
+          flavor = found.flavor;
+          info = found;
+          return found;
+        }
+        probe = Probe.notFound;
+        what = 'HTTP ${r.statusCode}';
+      } on TimeoutException {
+        probe = Probe.unreachable;
+        what = 'timeout';
+      } catch (e) {
+        final text = '$e';
+        probe = classifyError(text);
+        what = text.length > 120 ? text.substring(0, 120) : text;
       }
+      topProbe ??= probe;
+      details.add('$host:$port  $what');
     }
     flavor = ApiFlavor.top;
-    throw ApiException(0, 'no api', code: 'no_api');
+    throw ApiException(0, 'no api', code: 'no_api', probe: topProbe, detail: details.join('\n'));
   }
 
   Future<List<SettingSection>> settings() async =>
@@ -382,6 +405,16 @@ class PairingStore {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_key(device));
   }
+}
+
+/// a socket error -> what it means for finding the device
+Probe classifyError(String error) {
+  final e = error.toLowerCase();
+  if (e.contains('refused')) return Probe.refused;
+  if (e.contains('timed out') || e.contains('timeout') || e.contains('no route') || e.contains('unreachable')) {
+    return Probe.unreachable;
+  }
+  return Probe.other;
 }
 
 /// phone locale -> Accept-Language the device understands (zh-TW / zh-CN, else the language)

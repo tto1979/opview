@@ -64,8 +64,22 @@ void main() {
     });
 
     test('no API anywhere', () async {
-      final api = DeviceApi('10.0.0.2', client: MockClient((req) async => throw http.ClientException('refused')));
-      await expectLater(api.connect(), throwsA(isA<ApiException>().having((e) => e.noApi, 'noApi', isTrue)));
+      final api = DeviceApi('10.0.0.2', client: MockClient((req) async => throw http.ClientException('Connection refused')));
+      await expectLater(
+        api.connect(),
+        throwsA(isA<ApiException>()
+            .having((e) => e.noApi, 'noApi', isTrue)
+            .having((e) => e.probe, 'probe', Probe.refused)
+            .having((e) => e.detail, 'detail', contains('10.0.0.2:5001'))),
+      );
+    });
+
+    test('old TOP without the API', () async {
+      final api = DeviceApi('10.0.0.2', client: MockClient((req) async {
+        if (req.url.port == topPort) return http.Response('Not Found', 404);
+        throw http.ClientException('Connection refused');
+      }));
+      await expectLater(api.connect(), throwsA(isA<ApiException>().having((e) => e.probe, 'probe', Probe.notFound)));
     });
   });
 
@@ -173,6 +187,13 @@ void main() {
     expect(routes[1].start, '2026-11-26 08:01');
     expect(routes[1].duration, 120);
     expect(routes[1].segments[0].files, isNull); // listed when needed
+  });
+
+  test('classifyError', () {
+    expect(classifyError('SocketException: Connection refused (OS Error: Connection refused, errno = 111)'), Probe.refused);
+    expect(classifyError('SocketException: No route to host (OS Error: No route to host, errno = 113)'), Probe.unreachable);
+    expect(classifyError('Connection timed out'), Probe.unreachable);
+    expect(classifyError('Failed host lookup'), Probe.other);
   });
 
   test('htmlToText', () {

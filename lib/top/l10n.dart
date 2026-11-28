@@ -24,6 +24,17 @@ class T {
   static String get noApi => _t(
       '裝置沒有回應。TOP：在 TOP 設定頁打開「啟用 opview」。dragonpilot：打開 dashy。',
       'The device didn\'t answer. TOP: turn on "Enable opview" in the TOP settings. dragonpilot: turn on dashy.');
+  static String get probeUnreachable => _t(
+      '手機連不到這個 IP。確認 IP 正確、手機和裝置在同一個網路；有些路由器會隔離連線的裝置（訪客網路、AP 隔離），可以改用手機熱點。',
+      'The phone can\'t reach this IP. Check the IP and that both are on the same network; some routers isolate '
+          'their clients (guest networks, AP isolation), the phone\'s hotspot avoids that.');
+  static String get probeRefused => _t(
+      '裝置有回應，但 opview 服務沒在執行。確認 TOP 設定頁「啟用 opview」已打開，而且 TOP 已更新到最新的 main-0.11.1。',
+      'The device answers, but the opview service isn\'t running. Turn on "Enable opview" in the TOP settings and '
+          'update TOP to the latest main-0.11.1.');
+  static String get probeNotFound => _t(
+      '裝置上的 TOP 版本還沒有 opview API，請更新到最新的 main-0.11.1。',
+      'The TOP version on the device has no opview API yet: update to the latest main-0.11.1.');
   static String get networkError => _t('連不到裝置', 'Can\'t reach the device');
   static String get pairingTitle => _t('輸入配對碼', 'Enter the pairing code');
   static String get pairingHint => _t(

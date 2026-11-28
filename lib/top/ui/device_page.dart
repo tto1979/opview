@@ -64,8 +64,19 @@ class _DevicePageState extends State<DevicePage> {
       if (!mounted || _api != api) return;
       setState(() => _phase = _Phase.ready);
     } on ApiException catch (e) {
-      _fail(api, e.noApi ? T.noApi : (e.status == 0 ? T.networkError : e.message));
+      _fail(api, e.noApi ? _noApiMessage(e) : (e.status == 0 ? T.networkError : e.message));
     }
+  }
+
+  /// why the API wasn't found, with what each port answered (for reporting)
+  static String _noApiMessage(ApiException e) {
+    final hint = switch (e.probe) {
+      Probe.unreachable => T.probeUnreachable,
+      Probe.refused => T.probeRefused,
+      Probe.notFound => T.probeNotFound,
+      _ => T.noApi,
+    };
+    return e.detail.isEmpty ? hint : '$hint\n\n${e.detail}';
   }
 
   void _fail(DeviceApi api, String error) {
