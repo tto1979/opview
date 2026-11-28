@@ -3,6 +3,7 @@ name: CI
 on:
   push:
     branches: [main, 'top-*']
+  workflow_dispatch:  # build again from the Actions tab (e.g. after adding the signing secret)
   pull_request:
     branches: [main]
 
@@ -40,6 +41,25 @@ jobs:
           cache: true
 
       - run: flutter pub get
+
+      # TOP: sign with topview's key, so a new APK installs over the old one. The key is in the repo encrypted
+      # (android/app/topview.jks.enc), its passphrase in Settings > Secrets > Actions > TOPVIEW_KEY_PASSPHRASE.
+      # Without the secret (forks, dependabot) a throwaway key, through the same signing setup (like the debug key,
+      # its APKs don't install over each other). Check APK below shows which: CN=topview or CN=throwaway.
+      - name: Signing key
+        env:
+          PASSPHRASE: ${{ secrets.TOPVIEW_KEY_PASSPHRASE }}
+        run: |
+          if [ -n "$PASSPHRASE" ]; then
+            openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 -in android/app/topview.jks.enc -out android/app/topview.jks -pass env:PASSPHRASE
+            echo "topview key"
+          else
+            PASSPHRASE="throwaway$RANDOM$RANDOM$RANDOM"
+            keytool -genkeypair -keystore android/app/topview.jks -storetype PKCS12 -alias topview -keyalg RSA -keysize 2048 \
+              -validity 3650 -dname "CN=throwaway" -storepass "$PASSPHRASE" -keypass "$PASSPHRASE" > /dev/null
+            echo "no TOPVIEW_KEY_PASSPHRASE secret: throwaway key"
+          fi
+          printf 'storeFile=topview.jks\nstorePassword=%s\nkeyAlias=topview\nkeyPassword=%s\n' "$PASSPHRASE" "$PASSPHRASE" > android/key.properties
 
       - run: flutter build apk --release
 

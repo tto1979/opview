@@ -50,3 +50,7 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# TOP: the decrypted signing key and its settings (CI writes them, never commit)
+/android/key.properties
+/android/app/topview.jks
